@@ -25,7 +25,7 @@ def load_image(dir, file, colorkey=None):
     return image
 
 def load_sound(filename):
-    filename = os.path.join("data", filename)
+    filename = os.path.join("sound", filename)
     return pygame.mixer.Sound(filename)
 
 def split_image(image, n):
@@ -65,7 +65,7 @@ class MessageEngine:
     FONT_HEIGHT = 22
     WHITE, RED, GREEN, BLUE = 0, 160, 320, 480
     def __init__(self):
-        self.image = load_image("data", "font.png", -1)
+        self.image = load_image("picture", "font.png", -1)
         self.color = self.WHITE
         self.kana2rect = {}
         self.create_hash()
@@ -88,7 +88,7 @@ class MessageEngine:
             self.draw_character(screen, (dx,y), ch)
     def create_hash(self):
         """文字から座標への辞書を作成"""
-        filepath = os.path.join("data", "kana2rect.dat")
+        filepath = os.path.join("picture", "kana2rect.dat")
         fp = codecs.open(filepath, "r", "utf-8")
         for line in fp.readlines():
             line = line.rstrip()
@@ -103,8 +103,8 @@ class Title:
     START, CONTINUE, EXIT = 0, 1, 2
     def __init__(self, msg_engine):
         self.msg_engine = msg_engine
-        self.title_img = load_image("data", "title.png", -1)
-        self.cursor_img = load_image("data", "cursor2.png", -1)
+        self.title_img = load_image("picture", "title.png", -1)
+        self.cursor_img = load_image("picture", "cursor2.png", -1)
         self.menu = self.START
         self.play_bgm()
     def update(self):
@@ -126,7 +126,7 @@ class Title:
             screen.blit(self.cursor_img, (240, 320))
     def play_bgm(self):
         bgm_file = "title.mp3"
-        bgm_file = os.path.join("bgm", bgm_file)
+        bgm_file = os.path.join("sound", bgm_file)
         pygame.mixer.music.load(bgm_file)
         pygame.mixer.music.play(-1)
 
@@ -138,7 +138,7 @@ class PyRPG:
         self.screen = pygame.display.set_mode(SCR_RECT.size)
         pygame.display.set_caption(u"Invaders")
         # サウンドをロード
-        self.load_sounds("data", "sound.dat")
+        self.load_sounds("picture", "sound.dat")
         # メッセージエンジン
         self.msg_engine = MessageEngine()
         # タイトル画面
@@ -225,12 +225,12 @@ class PyRPG:
 
 
                 # スプライトの画像を登録--ここをいじって画像を変える
-                Back_image = load_image("data", "universe.png", -1)
+                Back_image = load_image("picture", "universe.png", -1)
                 back_rect = Back_image.get_rect()
-                Player.image = load_image("data", "player.png", -1)
-                Shot.image = load_image("data", "beam_b.png", -1)
-                Alien.images = split_image(load_image("data", "enemy.png", -1), 2)
-                Beam.image = load_image("data", "beam_r.png", -1)
+                Player.image = load_image("picture", "player.png", -1)
+                Shot.image = load_image("picture", "beam_b.png", -1)
+                Alien.images = split_image(load_image("picture", "enemy.png", -1), 2)
+                Beam.image = load_image("picture", "beam_r.png", -1)
 
                 # 自機を作成
                 player = Player()
@@ -269,9 +269,9 @@ class PyRPG:
         fp = open(file, "r")
         for line in fp:
             line = line.rstrip()
-            data = line.split(",")
-            se_name = data[0]
-            se_file = os.path.join("se", data[1])
+            picture = line.split(",")
+            se_name = picture[0]
+            se_file = os.path.join("se", picture[1])
             sounds[se_name] = pygame.mixer.Sound(se_file)
         fp.close()
 
