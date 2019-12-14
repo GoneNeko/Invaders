@@ -11,14 +11,12 @@ import sys
 
 sounds = {}
 TITLE, FIELD, TALK, COMMAND = range(4)
+SCR_RECT = Rect(0, 0, 600, 600)
+
 
 def load_image(dir, file, colorkey=None):
     file = os.path.join(dir, file)
-    # try:
     image = pygame.image.load(file)
-    # except pygame.error, message:
-    #     print "Cannot load image:", file
-    #     raise SystemExit, message
     image = image.convert()
     if colorkey is not None:
         if colorkey is -1:
@@ -26,13 +24,48 @@ def load_image(dir, file, colorkey=None):
         image.set_colorkey(colorkey, RLEACCEL)
     return image
 
+def load_sound(filename):
+    filename = os.path.join("data", filename)
+    return pygame.mixer.Sound(filename)
+
+def split_image(image, n):
+    """横に長いイメージを同じ大きさのn枚のイメージに分割
+    分割したイメージを格納したリストを返す"""
+    image_list = []
+    w = image.get_width()
+    h = image.get_height()
+    w1 = w / n
+    for i in range(0, w, 22):
+        surface = pygame.Surface((w1,h))
+        surface.blit(image, (0,0), (i,0,w1,h))
+        surface.set_colorkey(surface.get_at((0,0)), RLEACCEL)
+        surface.convert()
+        image_list.append(surface)
+    return image_list
+
+def collision_detection(player, aliens, shots, beams):
+    """衝突判定"""
+    # エイリアンとミサイルの衝突判定
+    alien_collided = pygame.sprite.groupcollide(aliens, shots, True, True)
+    for alien in list(alien_collided.keys()):
+        Alien.randomize_sound.play()
+    # プレイヤーとビームの衝突判定
+    beam_collided = pygame.sprite.spritecollide(player, beams, True)
+    if beam_collided:  # プレイヤーと衝突したビームがあれば
+        Player.explosion_sound.play()
+        # TODO: ゲームオーバー処理
+    # ビームとミサイルの衝突判定
+    beam_collided = pygame.sprite.groupcollide(beams, shots, True, True)
+    for beam in list(alien_collided.keys()):
+        beam.randomize_sound.play()
+
 
 class MessageEngine:
     FONT_WIDTH = 16
     FONT_HEIGHT = 22
     WHITE, RED, GREEN, BLUE = 0, 160, 320, 480
     def __init__(self):
-        self.image = load_image("data1", "font.png", -1)
+        self.image = load_image("data", "font.png", -1)
         self.color = self.WHITE
         self.kana2rect = {}
         self.create_hash()
@@ -45,12 +78,8 @@ class MessageEngine:
     def draw_character(self, screen, pos, ch):
         """1文字だけ描画する"""
         x, y = pos
-        # try:
         rect = self.kana2rect[ch]
         screen.blit(self.image, (x,y), (rect.x+self.color,rect.y,rect.width,rect.height))
-        # except KeyError:
-        #     print "描画できない文字があります:%s" % ch
-        #     return
     def draw_string(self, screen, pos, str):
         """文字列を描画"""
         x, y = pos
@@ -59,7 +88,7 @@ class MessageEngine:
             self.draw_character(screen, (dx,y), ch)
     def create_hash(self):
         """文字から座標への辞書を作成"""
-        filepath = os.path.join("data1", "kana2rect.dat")
+        filepath = os.path.join("data", "kana2rect.dat")
         fp = codecs.open(filepath, "r", "utf-8")
         for line in fp.readlines():
             line = line.rstrip()
@@ -74,8 +103,8 @@ class Title:
     START, CONTINUE, EXIT = 0, 1, 2
     def __init__(self, msg_engine):
         self.msg_engine = msg_engine
-        self.title_img = load_image("data1", "title.png", -1)
-        self.cursor_img = load_image("data1", "cursor2.png", -1)
+        self.title_img = load_image("data", "title.png", -1)
+        self.cursor_img = load_image("data", "cursor2.png", -1)
         self.menu = self.START
         self.play_bgm()
     def update(self):
@@ -89,12 +118,10 @@ class Title:
         # self.msg_engine.draw_string(screen, (260,280), u"ＣＯＮＴＩＮＵＥ")
         self.msg_engine.draw_string(screen, (260,320), u"ＥＸＩＴ")
         # クレジットの描画
-        self.msg_engine.draw_string(screen, (130,400), u"２０１9　あぷりかいはつだよえへへ")
+        self.msg_engine.draw_string(screen, (200,400), u"２０１9　あぷりかいはつ")
         # メニューカーソルの描画
         if self.menu == self.START:
             screen.blit(self.cursor_img, (240, 260))
-        # elif self.menu == self.CONTINUE:
-        #     screen.blit(self.cursor_img, (240, 280))
         elif self.menu == self.EXIT:
             screen.blit(self.cursor_img, (240, 320))
     def play_bgm(self):
@@ -103,38 +130,17 @@ class Title:
         pygame.mixer.music.load(bgm_file)
         pygame.mixer.music.play(-1)
 
-##
 class PyRPG:
     def __init__(self):
         pygame.init()
         # フルスクリーン化 + Hardware Surface使用
         # self.screen = pygame.display.set_mode(SCR_RECT.size, DOUBLEBUF|HWSURFACE|FULLSCREEN)
         self.screen = pygame.display.set_mode(SCR_RECT.size)
-        # pygame.display.set_caption(u"PyRPG 26 ゲーム状態の導入")
+        pygame.display.set_caption(u"Invaders")
         # サウンドをロード
-        self.load_sounds("data1", "sound.dat")
-        # キャラクターチップをロード
-        #self.load_charachips("data1", "charachip.dat")
-        # マップチップをロード
-        #self.load_mapchips("data1", "mapchip.dat")
-        # パーティの作成
-        #self.party = Party()
-        #player1 = Player("swordman_female", (3,5), DOWN, True, self.party)
-        #player2 = Player("elf_female2", (3,4), DOWN, False, self.party)
-        #player3 = Player("priestess", (3,3), DOWN, False, self.party)
-        #player4 = Player("magician_female", (3,2), DOWN, False, self.party)
-        #self.party.add(player1)
-        #self.party.add(player2)
-        #self.party.add(player3)
-        #self.party.add(player4)
-        # マップの作成
-        #self.map = Map("field", self.party)
+        self.load_sounds("data", "sound.dat")
         # メッセージエンジン
         self.msg_engine = MessageEngine()
-        # メッセージウィンドウ
-        #self.msgwnd = MessageWindow(Rect(140,334,360,140), self.msg_engine)
-        # コマンドウィンドウ
-        #self.cmdwnd = CommandWindow(Rect(16,16,216,160), self.msg_engine)
         # タイトル画面
         self.title = Title(self.msg_engine)
         # メインループを起動
@@ -153,22 +159,22 @@ class PyRPG:
         """ゲーム状態の更新"""
         if self.game_state == TITLE:
             self.title.update()
-        elif self.game_state == FIELD:
-            self.map.update()
-            self.party.update(self.map)
-        elif self.game_state == TALK:
-            self.msgwnd.update()
+        # elif self.game_state == FIELD:
+        #     self.map.update()
+        #     self.party.update(self.map)
+        # elif self.game_state == TALK:
+        #     self.msgwnd.update()
     def render(self):
         """ゲームオブジェクトのレンダリング"""
         if self.game_state == TITLE:
             self.title.draw(self.screen)
-        elif self.game_state == FIELD or self.game_state == TALK or self.game_state == COMMAND:
-            offset = self.calc_offset(self.party.member[0])
-            self.map.draw(self.screen, offset)
-            self.party.draw(self.screen, offset)
-            self.msgwnd.draw(self.screen)
-            self.cmdwnd.draw(self.screen)
-            self.show_info()  # デバッグ情報を画面に表示
+        # elif self.game_state == FIELD or self.game_state == TALK or self.game_state == COMMAND:
+        #     offset = self.calc_offset(self.party.member[0])
+        #     self.map.draw(self.screen, offset)
+        #     self.party.draw(self.screen, offset)
+        #     self.msgwnd.draw(self.screen)
+        #     self.cmdwnd.draw(self.screen)
+        #     self.show_info()  # デバッグ情報を画面に表示
     def check_event(self):
         """イベントハンドラ"""
         for event in pygame.event.get():
@@ -181,12 +187,12 @@ class PyRPG:
             # 表示されているウィンドウに応じてイベントハンドラを変更
             if self.game_state == TITLE:
                 self.title_handler(event)
-            elif self.game_state == FIELD:
-                self.field_handler(event)
-            elif self.game_state == COMMAND:
-                self.cmd_handler(event)
-            elif self.game_state == TALK:
-                self.talk_handler(event)
+            # elif self.game_state == FIELD:
+            #     self.field_handler(event)
+            # elif self.game_state == COMMAND:
+            #     self.cmd_handler(event)
+            # elif self.game_state == TALK:
+            #     self.talk_handler(event)
     def title_handler(self, event):
         """タイトル画面のイベントハンドラ"""
         if event.type == KEYUP and event.key == K_UP:
@@ -218,7 +224,7 @@ class PyRPG:
                 Beam.containers = all, beams
 
 
-    # スプライトの画像を登録--ここをいじって画像を変える
+                # スプライトの画像を登録--ここをいじって画像を変える
                 Back_image = load_image("data", "universe.png", -1)
                 back_rect = Back_image.get_rect()
                 Player.image = load_image("data", "player.png", -1)
@@ -226,22 +232,20 @@ class PyRPG:
                 Alien.images = split_image(load_image("data", "enemy.png", -1), 2)
                 Beam.image = load_image("data", "beam_r.png", -1)
 
-    # 自機を作成
+                # 自機を作成
                 player = Player()
 
-    # エイリアンを作成--ここをいじってエイリアンの位置を替える
+                # エイリアンを作成--ここをいじってエイリアンの位置を替える
                 for i in range(0, 50):
                     x = 20 + (i % 10) * 40
-#        y = 20 + (i / 10) * 40
                     y = 20 + (i - 25) * (i - 25) / 3
                     Alien((x,y))
-
 
                 clock = pygame.time.Clock()
                 while True:
                     clock.tick(60)
                     all.update()
-        # ミサイルとエイリアンの衝突判定
+                    # ミサイルとエイリアンの衝突判定
                     collision_detection(player, aliens, shots, beams)
                     all.draw(screen)
                     pygame.display.update()
@@ -253,15 +257,6 @@ class PyRPG:
                             pygame.quit()
                             sys.exit()
                     screen.blit(Back_image, back_rect)
-
-
-
-
-#                self.game_state = FIELD
-#                 self.map.create("field")  # フィールドマップへ#例外処理でmainループに移動
-
-
-
 
             elif self.title.menu == Title.CONTINUE:
                 pass
@@ -279,126 +274,6 @@ class PyRPG:
             se_file = os.path.join("se", data[1])
             sounds[se_name] = pygame.mixer.Sound(se_file)
         fp.close()
-
-
-#ここから下がインベーダー
-SCR_RECT = Rect(0, 0, 600, 600)
-def main():
-    pygame.init()
-    screen = pygame.display.set_mode(SCR_RECT.size)
-    pygame.display.set_caption("Invader 05 エイリアンの反撃")
-    # サウンドのロード
-    Alien.randomize_sound = load_sound("randomize.wav")
-    Player.shoot_sound = load_sound("shoot.wav")
-    Player.explosion_sound = load_sound("explosion.wav")
-    # スプライトグループを作成して登録
-    all = pygame.sprite.RenderUpdates()
-    aliens = pygame.sprite.Group()  # エイリアングループ
-    shots = pygame.sprite.Group()   # ミサイルグループ
-    beams = pygame.sprite.Group()   # ビームグループ
-    Player.containers = all
-    Shot.containers = all, shots
-    Alien.containers = all, aliens
-    Beam.containers = all, beams
-
-
-
-
-
-
-
-
-
-
-    # スプライトの画像を登録--ここをいじって画像を変える
-    Back_image = load_image("data", "desert.png", -1)
-    back_rect = Back_image.get_rect()
-    Player.image = load_image("data", "probe.png", -1)
-    Shot.image = load_image("data", "missile.png", -1)
-    Alien.images = split_image(load_image("data", "ufo.png", -1), 2)
-    Beam.image = load_image("data", "ball.png", -1)
-
-
-
-
-
-
-
-
-
-
-    # 自機を作成
-    player = Player()
-
-
-
-
-
-
-
-
-
-
-    # エイリアンを作成--ここをいじってエイリアンの位置を替える
-#     for i in range(0, 50):
-#         x = 20 + (i % 10) * 40
-# #        y = 20 + (i / 10) * 40
-#         y = 20 + (i - 25) * (i - 25) / 3
-#         Alien((x,y))
-    Alien((50,50))
-    Alien((100,100))
-    Alien((150,150))
-    Alien((200,200))
-    Alien((250,250))
-    Alien((300,300))
-    Alien((250,50))
-    Alien((300,100))
-    Alien((350,150))
-    Alien((400,200))
-    Alien((450,250))
-    Alien((500,300))
-
-
-
-
-
-
-
-
-
-
-    clock = pygame.time.Clock()
-    while True:
-        clock.tick(60)
-        all.update()
-        # ミサイルとエイリアンの衝突判定
-        collision_detection(player, aliens, shots, beams)
-        all.draw(screen)
-        pygame.display.update()
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == KEYDOWN and event.key == K_ESCAPE:
-                pygame.quit()
-                sys.exit()
-        screen.blit(Back_image, back_rect)
-
-def collision_detection(player, aliens, shots, beams):
-    """衝突判定"""
-    # エイリアンとミサイルの衝突判定
-    alien_collided = pygame.sprite.groupcollide(aliens, shots, True, True)
-    for alien in list(alien_collided.keys()):
-        Alien.randomize_sound.play()
-    # プレイヤーとビームの衝突判定
-    beam_collided = pygame.sprite.spritecollide(player, beams, True)
-    if beam_collided:  # プレイヤーと衝突したビームがあれば
-        Player.explosion_sound.play()
-        # TODO: ゲームオーバー処理
-    # ビームとミサイルの衝突判定
-    beam_collided = pygame.sprite.groupcollide(beams, shots, True, True)
-    for beam in list(alien_collided.keys()):
-        beam.randomize_sound.play()
 
 class Player(pygame.sprite.Sprite):
     """自機"""
@@ -455,33 +330,9 @@ class Alien(pygame.sprite.Sprite):
         self.rect.move_ip(self.speed, 0)
         if self.rect.center[0] < self.left or self.rect.center[0] > self.right:
             self.speed = -self.speed
-
-
-
-
-
-
-
-
-
-
         # ビームを発射--ここをいじってビームが降ってくる個数を変える
         if random.random() < self.prob_beam:
             Beam(self.rect.center)
-
-
-
-
-
-
-
-
-
-
-        # キャラクターアニメーション
-        # self.frame += 1
-#        self.image = self.images[self.frame/self.animcycle%2]
-        # self.image = self.images[self.frame//self.animcycle%2]
         self.image = self.images[self.frame//self.animcycle%2]
 
 class Shot(pygame.sprite.Sprite):
@@ -510,37 +361,7 @@ class Beam(pygame.sprite.Sprite):
         if self.rect.bottom > SCR_RECT.height:  # 下端に達したら除去
             self.kill()
 
-# def load_image(filename, colorkey=None):
-#     """画像をロードして画像と矩形を返す"""
-#     filename = os.path.join("data", filename)
-#     try:
-#         image = pygame.image.load(filename)
-#     except pygame.error as message:
-#         print("Cannot load image:", filename)
-#         raise SystemExit(message)
-# #    image = image.convert()
-#     image = image.convert_alpha()
-#     return image
 
-def split_image(image, n):
-    """横に長いイメージを同じ大きさのn枚のイメージに分割
-    分割したイメージを格納したリストを返す"""
-    image_list = []
-    w = image.get_width()
-    h = image.get_height()
-    w1 = w / n
-#    for i in range(0, w, w1):
-    for i in range(0, w, 22):
-        surface = pygame.Surface((w1,h))
-        surface.blit(image, (0,0), (i,0,w1,h))
-        surface.set_colorkey(surface.get_at((0,0)), RLEACCEL)
-        surface.convert()
-        image_list.append(surface)
-    return image_list
-
-def load_sound(filename):
-    filename = os.path.join("data", filename)
-    return pygame.mixer.Sound(filename)
 
 if __name__ == "__main__":
     PyRPG()
@@ -548,4 +369,5 @@ if __name__ == "__main__":
 """ライフポイントをつける
 制限時間を設ける
 コンテニュー機能をつける
+タイトルのカーソルがうまくいかない
 """
