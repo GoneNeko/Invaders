@@ -103,6 +103,7 @@ class Title:
     START, CONTINUE, EXIT = 0, 1, 2
     def __init__(self, msg_engine):
         self.msg_engine = msg_engine
+        self.title_background = load_image("picture", "universe.png", -1)
         self.title_img = load_image("picture", "title.png", -1)
         self.cursor_img = load_image("picture", "cursor2.png", -1)
         self.menu = self.START
@@ -112,7 +113,8 @@ class Title:
     def draw(self, screen):
         screen.fill((0,0,128))
         # タイトルの描画
-        screen.blit(self.title_img, (20,60))
+        screen.blit(self.title_background,(0,0))
+        screen.blit(self.title_img, (8,60))
         # メニューの描画
         self.msg_engine.draw_string(screen, (260,260), u"ＳＴＡＲＴ")
         # self.msg_engine.draw_string(screen, (260,280), u"ＣＯＮＴＩＮＵＥ")
@@ -208,7 +210,7 @@ class PyRPG:
             if self.title.menu == Title.START:
                 pygame.init()
                 screen = pygame.display.set_mode(SCR_RECT.size)
-                pygame.display.set_caption("Invader 05 エイリアンの反撃")
+                # pygame.display.set_caption("Invader 05 エイリアンの反撃")
                 # サウンドのロード
                 Alien.randomize_sound = load_sound("randomize.wav")
                 Player.shoot_sound = load_sound("shoot.wav")
