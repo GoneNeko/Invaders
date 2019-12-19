@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import pygame
+import numpy as np
 from pygame.locals import *
 import codecs
 import os
