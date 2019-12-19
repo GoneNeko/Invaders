@@ -5,8 +5,7 @@ This is Invaders for learning Deep-Q-Learning.
 You can also enjoy this environment as a video game.
 
 ## Demo
-<img src = "sample_images/image1.png" width = 170px >
-<img src = "sample_images/image2.png" width = 170px >
+<img src = "sample_images/image1.png" width = 170px ><img src = "sample_images/image2.png" width = 170px >
 
 ## Requirement
 This game needs pygame and numpy.
